@@ -1,15 +1,16 @@
 # SAHI Video Segmentation CLI
 
-This tool provides SAHI (Slicing Aided Hyper Inference) based video segmentation with dual output generation for accurate object segmentation in videos.
+This tool provides SAHI (Slicing Aided Hyper Inference) based video segmentation with dual frame output generation for accurate object segmentation in videos.
 
 ## Features
 
 - **SAHI Overlapping Tiling**: Uses 1024x1024 tiles with 33% overlap for accurate segmentation
-- **Dual Output Generation**:
-  - **Regular Output**: Segmentation masks overlayed on original frames
-  - **Binary Output**: Segmentation masks overlayed on black background
+- **Dual Frame Output Generation**:
+  - **Regular Output**: Segmentation masks overlayed on original frames (saved as individual PNG files)
+  - **Binary Output**: Segmentation masks overlayed on black background (saved as individual PNG files)
 - **Clean Visualization**: No bounding boxes, class labels, or confidence scores displayed
 - **Video Input Support**: Processes full video files frame-by-frame
+- **Frame-based Output**: Each frame is saved as a separate PNG image for easy inspection and analysis
 - **CLI Interface**: Easy to use command-line interface
 
 ## Requirements
@@ -60,7 +61,7 @@ python sahi/scripts/sahi_video_seg.py \
 |-----------|-------|---------|-------------|
 | `--input` | `-i` | *required* | Path to input video file |
 | `--model` | `-m` | *required* | Path to YOLO segmentation model |
-| `--output-dir` | `-o` | `output` | Directory to save output videos |
+| `--output-dir` | `-o` | `output` | Directory to save output frames |
 | `--device` | `-d` | `cpu` | Device for inference (`cpu` or `cuda`) |
 | `--confidence` | `-c` | `0.5` | Confidence threshold (0-1) |
 | `--tile-size` | `-t` | `1024` | Size of tiles for SAHI slicing |
@@ -69,10 +70,12 @@ python sahi/scripts/sahi_video_seg.py \
 
 ## Output
 
-The tool generates two output videos for each input:
+The tool generates two directories with individual frame images for each input:
 
-1. **`<video_name>_regular.mp4`**: Segmentation masks blended with original frames
-2. **`<video_name>_binary.mp4`**: Segmentation masks on black background
+1. **`<video_name>_regular/`**: Directory containing segmentation masks blended with original frames
+   - Each frame saved as `frame_000000.png`, `frame_000001.png`, etc.
+2. **`<video_name>_binary/`**: Directory containing segmentation masks on black background
+   - Each frame saved as `frame_000000.png`, `frame_000001.png`, etc.
 
 Both outputs are created for **every frame**, regardless of whether objects are detected.
 
@@ -87,8 +90,8 @@ python sahi/scripts/sahi_video_seg.py \
 ```
 
 Output:
-- `output/traffic_regular.mp4`
-- `output/traffic_binary.mp4`
+- `output/traffic_regular/` (directory with frame_000000.png, frame_000001.png, ...)
+- `output/traffic_binary/` (directory with frame_000000.png, frame_000001.png, ...)
 
 ### Example 2: GPU Acceleration with Custom Confidence
 
@@ -102,8 +105,8 @@ python sahi/scripts/sahi_video_seg.py \
 ```
 
 Output:
-- `results/surveillance_regular.mp4`
-- `results/surveillance_binary.mp4`
+- `results/surveillance_regular/` (directory with individual frames)
+- `results/surveillance_binary/` (directory with individual frames)
 
 ### Example 3: High-Resolution Video with Smaller Tiles
 

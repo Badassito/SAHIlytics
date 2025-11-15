@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""SAHI Video Segmentation CLI with Dual Output.
+"""SAHI Video Segmentation CLI with Dual Frame Output.
 
 This script processes videos using SAHI (Slicing Aided Hyper Inference) with overlapping tiles
-for accurate segmentation. It generates two outputs for each frame:
-1. Regular overlay: Segmentation masks on the original frame
-2. Binary overlay: Segmentation masks on a black background
+for accurate segmentation. It generates two directories of output frames:
+1. Regular overlay: Segmentation masks on the original frames (saved as individual PNG files)
+2. Binary overlay: Segmentation masks on a black background (saved as individual PNG files)
 
+Each frame is saved as a separate image file (frame_000000.png, frame_000001.png, etc.)
 No bounding boxes, class labels, or confidence scores are displayed.
 """
 
@@ -116,20 +117,26 @@ class SAHIVideoSegmentation:
         output_dir: str,
         batch_size: int = 16,
     ):
-        """Process video with SAHI segmentation and generate dual outputs.
+        """Process video with SAHI segmentation and generate dual frame outputs.
 
         Args:
             input_path: Path to input video file
-            output_dir: Directory to save output videos
+            output_dir: Directory to save output frames
             batch_size: Batch size for processing (currently informational)
         """
         # Load model if not already loaded
         if self.detection_model is None:
             self.load_model()
 
-        # Create output directory
+        # Create output directories
         output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
+        input_name = Path(input_path).stem
+
+        regular_output_path = output_path / f"{input_name}_regular"
+        binary_output_path = output_path / f"{input_name}_binary"
+
+        regular_output_path.mkdir(parents=True, exist_ok=True)
+        binary_output_path.mkdir(parents=True, exist_ok=True)
 
         # Open input video
         cap = cv2.VideoCapture(input_path)
@@ -152,24 +159,9 @@ class SAHIVideoSegmentation:
         print(f"  Confidence: {self.confidence}")
         print(f"  Batch size: {batch_size} (note: processed sequentially)")
 
-        # Define codec and create VideoWriter objects
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-
-        # Output filenames
-        input_name = Path(input_path).stem
-        regular_output_path = output_path / f"{input_name}_regular.mp4"
-        binary_output_path = output_path / f"{input_name}_binary.mp4"
-
-        regular_writer = cv2.VideoWriter(
-            str(regular_output_path), fourcc, fps, (width, height)
-        )
-        binary_writer = cv2.VideoWriter(
-            str(binary_output_path), fourcc, fps, (width, height)
-        )
-
-        print(f"\nOutput files:")
-        print(f"  Regular: {regular_output_path}")
-        print(f"  Binary: {binary_output_path}")
+        print(f"\nOutput directories:")
+        print(f"  Regular frames: {regular_output_path}")
+        print(f"  Binary frames: {binary_output_path}")
 
         # Process frames
         frame_count = 0
@@ -182,22 +174,25 @@ class SAHIVideoSegmentation:
                 # Process frame
                 regular_frame, binary_frame = self.process_frame(frame)
 
-                # Write to output videos
-                regular_writer.write(regular_frame)
-                binary_writer.write(binary_frame)
+                # Save frames as images
+                frame_filename = f"frame_{frame_count:06d}.png"
+                cv2.imwrite(
+                    str(regular_output_path / frame_filename), regular_frame
+                )
+                cv2.imwrite(
+                    str(binary_output_path / frame_filename), binary_frame
+                )
 
                 frame_count += 1
                 pbar.update(1)
 
         # Release resources
         cap.release()
-        regular_writer.release()
-        binary_writer.release()
 
         print(f"\n✓ Processing complete!")
         print(f"  Processed {frame_count} frames")
-        print(f"  Regular output: {regular_output_path}")
-        print(f"  Binary output: {binary_output_path}")
+        print(f"  Regular frames: {regular_output_path}")
+        print(f"  Binary frames: {binary_output_path}")
 
 
 def video_segment(
@@ -210,12 +205,12 @@ def video_segment(
     overlap: float = 0.33,
     batch_size: int = 16,
 ):
-    """Process video with SAHI segmentation and generate dual outputs.
+    """Process video with SAHI segmentation and generate dual frame outputs.
 
     Args:
         input: Path to input video file
         model: Path to YOLO segmentation model (e.g., yolo11n-seg.pt)
-        output_dir: Directory to save output videos
+        output_dir: Directory to save output frames
         device: Device to run inference on (cpu or cuda)
         confidence: Confidence threshold for predictions (0-1)
         tile_size: Size of tiles for SAHI slicing (width=height)
@@ -277,7 +272,7 @@ def main():
         "-o",
         type=str,
         default="output",
-        help="Directory to save output videos",
+        help="Directory to save output frames",
     )
     parser.add_argument(
         "--device",

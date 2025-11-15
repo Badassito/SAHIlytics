@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Example: SAHI Video Segmentation with Dual Output
+"""Example: SAHI Video Segmentation with Dual Frame Output
 
 This example demonstrates how to use the SAHI video segmentation tool
 programmatically (as opposed to using the CLI).
+
+The tool processes videos and outputs individual frames as PNG images in two directories:
+- Regular output: Masks overlayed on original frames
+- Binary output: Masks overlayed on black background
 """
 
 from sahi.scripts.sahi_video_seg import SAHIVideoSegmentation
