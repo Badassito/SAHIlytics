@@ -6,6 +6,7 @@ from sahi.scripts.coco2fiftyone import main as coco2fiftyone
 from sahi.scripts.coco2yolo import main as coco2yolo
 from sahi.scripts.coco_error_analysis import analyse
 from sahi.scripts.coco_evaluation import evaluate
+from sahi.scripts.sahi_video_seg import video_segment
 from sahi.scripts.slice_coco import slicer
 from sahi.utils.import_utils import print_environment_info
 
@@ -21,6 +22,7 @@ coco_app = {
 sahi_app = {
     "predict": predict,
     "predict-fiftyone": predict_fiftyone,
+    "video-segment": video_segment,
     "coco": coco_app,
     "version": sahi_version,
     "env": print_environment_info,
