@@ -4,10 +4,12 @@ Standalone script for instance segmentation on videos using SAHI (Slicing Aided 
 
 ## Features
 
-- **Tiled inference** with 1024x1024 tiles and 33% overlap for accurate small object detection
+- **Tiled inference** with configurable tile size (default: 1024x1024) and overlap (default: 33%)
 - **Dual output modes**:
   - Regular: Segmentation masks overlayed on original frames
   - Binary: Segmentation masks on black background
+- **Frame output** - saves individual PNG frames instead of videos
+- **Adjustable NMS/IOU parameters** for postprocessing control
 - **Batch processing** with configurable confidence threshold
 - **CLI interface** for easy usage
 
@@ -36,7 +38,10 @@ python sahi_video_segmentation.py \
     --tile-size 1024 \
     --overlap 0.33 \
     --batch-size 16 \
-    --device cuda:0
+    --device cuda:0 \
+    --postprocess-type GREEDYNMM \
+    --postprocess-match-metric IOS \
+    --postprocess-match-threshold 0.5
 ```
 
 ### Arguments
@@ -49,15 +54,18 @@ python sahi_video_segmentation.py \
 - `--overlap`: Overlap ratio 0.0-1.0 (default: `0.33`)
 - `--batch-size`: Batch size (default: `16`)
 - `--device`: Device for inference (default: `cuda:0`)
+- `--postprocess-type`: Postprocess type - GREEDYNMM, NMM, NMS, LSNMS (default: `GREEDYNMM`)
+- `--postprocess-match-metric`: Match metric - IOU or IOS (default: `IOS`)
+- `--postprocess-match-threshold`: Match threshold 0.0-1.0 (default: `0.5`)
 
 ## Output
 
-The script generates two video files:
+The script generates two directories with frame sequences:
 
-1. `{video_name}_regular.mp4`: Original frames with colored segmentation masks overlayed
-2. `{video_name}_binary.mp4`: Segmentation masks isolated on black background
+1. `{video_name}_regular/`: Original frames with colored segmentation masks overlayed
+2. `{video_name}_binary/`: Segmentation masks isolated on black background
 
-Both videos maintain the original resolution and frame rate.
+Frames are saved as PNG files with zero-padded numbering (e.g., `frame_000000.png`, `frame_000001.png`, etc.)
 
 ## Example
 
@@ -70,6 +78,9 @@ python sahi_video_segmentation.py --video traffic.mp4 --device cpu
 
 # Custom tile size and overlap
 python sahi_video_segmentation.py --video traffic.mp4 --tile-size 640 --overlap 0.5
+
+# Adjust NMS parameters for better duplicate suppression
+python sahi_video_segmentation.py --video traffic.mp4 --postprocess-match-threshold 0.3
 ```
 
 ## Notes
@@ -78,3 +89,6 @@ python sahi_video_segmentation.py --video traffic.mp4 --tile-size 640 --overlap 
 - SAHI processes frames individually for optimal accuracy
 - Use smaller tile sizes for faster processing (may reduce accuracy)
 - Increase overlap for better detection at tile boundaries
+- Adjust `--postprocess-match-threshold` lower (e.g., 0.3) to suppress more duplicates, higher (e.g., 0.7) to keep more detections
+- IOS (Intersection over Smaller) is better for detecting objects at different scales
+- IOU (Intersection over Union) is the standard metric for similar-sized objects

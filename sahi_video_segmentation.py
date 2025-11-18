@@ -31,6 +31,9 @@ class SAHIVideoSegmentation:
         device: str = "cuda:0",
         tile_size: int = 1024,
         overlap_ratio: float = 0.33,
+        postprocess_type: str = "GREEDYNMM",
+        postprocess_match_metric: str = "IOS",
+        postprocess_match_threshold: float = 0.5,
     ):
         """Initialize the SAHI video segmentation model.
 
@@ -40,12 +43,18 @@ class SAHIVideoSegmentation:
             device: Device to run inference on (default: "cuda:0")
             tile_size: Size of tiles for sliced inference (default: 1024)
             overlap_ratio: Overlap ratio between tiles (default: 0.33)
+            postprocess_type: NMS postprocess type - GREEDYNMM, NMM, NMS, LSNMS (default: GREEDYNMM)
+            postprocess_match_metric: Matching metric - IOU or IOS (default: IOS)
+            postprocess_match_threshold: Matching threshold for NMS (default: 0.5)
         """
         self.model_path = model_path
         self.confidence = confidence
         self.device = device
         self.tile_size = tile_size
         self.overlap_ratio = overlap_ratio
+        self.postprocess_type = postprocess_type
+        self.postprocess_match_metric = postprocess_match_metric
+        self.postprocess_match_threshold = postprocess_match_threshold
         self.detection_model = None
 
     def load_model(self):
@@ -98,21 +107,22 @@ class SAHIVideoSegmentation:
         print(f"  Tile size: {self.tile_size}x{self.tile_size}")
         print(f"  Overlap: {self.overlap_ratio*100:.0f}%")
         print(f"  Confidence: {self.confidence}")
+        print(f"  Postprocess: {self.postprocess_type}")
+        print(f"  Match metric: {self.postprocess_match_metric}")
+        print(f"  Match threshold: {self.postprocess_match_threshold}")
 
-        # Setup output video writers
+        # Create output directories for frames
         video_name = Path(video_path).stem
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        regular_output_dir = output_path / f"{video_name}_regular"
+        binary_output_dir = output_path / f"{video_name}_binary"
 
-        regular_output = output_path / f"{video_name}_regular.mp4"
-        binary_output = output_path / f"{video_name}_binary.mp4"
-
-        regular_writer = cv2.VideoWriter(str(regular_output), fourcc, fps, (width, height))
-        binary_writer = cv2.VideoWriter(str(binary_output), fourcc, fps, (width, height))
+        regular_output_dir.mkdir(parents=True, exist_ok=True)
+        binary_output_dir.mkdir(parents=True, exist_ok=True)
 
         print(f"\nProcessing video...")
-        print(f"Output will be saved to:")
-        print(f"  Regular: {regular_output}")
-        print(f"  Binary: {binary_output}")
+        print(f"Output frames will be saved to:")
+        print(f"  Regular: {regular_output_dir}")
+        print(f"  Binary: {binary_output_dir}")
 
         frame_count = 0
         with tqdm(total=total_frames, desc="Processing frames") as pbar:
@@ -129,6 +139,9 @@ class SAHIVideoSegmentation:
                     slice_width=self.tile_size,
                     overlap_height_ratio=self.overlap_ratio,
                     overlap_width_ratio=self.overlap_ratio,
+                    postprocess_type=self.postprocess_type,
+                    postprocess_match_metric=self.postprocess_match_metric,
+                    postprocess_match_threshold=self.postprocess_match_threshold,
                     verbose=0,
                 )
 
@@ -136,17 +149,16 @@ class SAHIVideoSegmentation:
                 regular_frame = self._create_regular_output(frame, result)
                 binary_frame = self._create_binary_output(frame, result)
 
-                # Write frames
-                regular_writer.write(regular_frame)
-                binary_writer.write(binary_frame)
+                # Save frames with zero-padded numbering
+                frame_filename = f"frame_{frame_count:06d}.png"
+                cv2.imwrite(str(regular_output_dir / frame_filename), regular_frame)
+                cv2.imwrite(str(binary_output_dir / frame_filename), binary_frame)
 
                 frame_count += 1
                 pbar.update(1)
 
         # Release resources
         cap.release()
-        regular_writer.release()
-        binary_writer.release()
 
         print(f"\n✓ Processing complete! Processed {frame_count} frames.")
 
@@ -261,6 +273,26 @@ def main():
         default="cuda:0",
         help="Device to run inference on (e.g., 'cuda:0', 'cpu')",
     )
+    parser.add_argument(
+        "--postprocess-type",
+        type=str,
+        default="GREEDYNMM",
+        choices=["GREEDYNMM", "NMM", "NMS", "LSNMS"],
+        help="Postprocess type for merging predictions",
+    )
+    parser.add_argument(
+        "--postprocess-match-metric",
+        type=str,
+        default="IOS",
+        choices=["IOU", "IOS"],
+        help="Matching metric for postprocessing (IOU: Intersection over Union, IOS: Intersection over Smaller)",
+    )
+    parser.add_argument(
+        "--postprocess-match-threshold",
+        type=float,
+        default=0.5,
+        help="Matching threshold for postprocessing NMS",
+    )
 
     args = parser.parse_args()
 
@@ -271,6 +303,9 @@ def main():
         device=args.device,
         tile_size=args.tile_size,
         overlap_ratio=args.overlap,
+        postprocess_type=args.postprocess_type,
+        postprocess_match_metric=args.postprocess_match_metric,
+        postprocess_match_threshold=args.postprocess_match_threshold,
     )
 
     segmenter.process_video(
